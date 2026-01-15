@@ -1,6 +1,7 @@
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 app = FastAPI()
 
@@ -15,6 +16,9 @@ app.add_middleware(
 
 # Servir arquivos estáticos em /static
 app.mount("/static", StaticFiles(directory="static", html=True), name="static")
+@app.get("/")
+async def root():
+    return FileResponse("static/index.html")
 
 connections = set()
 chat_history = []
