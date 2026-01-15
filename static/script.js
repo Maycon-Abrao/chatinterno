@@ -8,7 +8,11 @@ async function loadHistory() {
     const chat = document.getElementById('chat');
     chat.innerHTML = '';
     try {
-        const response = await fetch('/history');
+        // Detecta se está rodando local ou em produção
+        const baseUrl = window.location.hostname === 'localhost'
+            ? '/history'
+            : 'https://chatinterno.onrender.com/history';
+        const response = await fetch(baseUrl);
         const history = await response.json();
         history.forEach(msg => {
             chat.innerHTML += `<div>${msg}</div>`;
