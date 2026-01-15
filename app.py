@@ -13,8 +13,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Servir arquivos estáticos (HTML)
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+# Servir arquivos estáticos em /static
+app.mount("/static", StaticFiles(directory="static", html=True), name="static")
 
 connections = set()
 chat_history = []
