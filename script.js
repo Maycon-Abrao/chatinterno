@@ -1,9 +1,7 @@
-
 const ws = new WebSocket('wss://chatinterno.onrender.com/ws');
 
 let typingTimeout;
 let isTyping = false;
-
 
 // Função para carregar histórico do servidor
 async function loadHistory() {
@@ -21,7 +19,6 @@ async function loadHistory() {
     }
 }
 
-
 // Solicitar permissão de notificação ao carregar a página
 window.addEventListener('DOMContentLoaded', () => {
     if ('Notification' in window && Notification.permission !== 'granted') {
@@ -29,7 +26,6 @@ window.addEventListener('DOMContentLoaded', () => {
     }
     loadHistory();
 });
-
 
 ws.onmessage = function(event) {
     const chat = document.getElementById('chat');
