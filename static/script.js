@@ -8,7 +8,7 @@ async function loadHistory() {
     const chat = document.getElementById('chat');
     chat.innerHTML = '';
     try {
-        const response = await fetch('https://chatinterno.onrender.com/history');
+        const response = await fetch('/history');
         const history = await response.json();
         history.forEach(msg => {
             chat.innerHTML += `<div>${msg}</div>`;
