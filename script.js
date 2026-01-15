@@ -1,5 +1,5 @@
 
-const ws = new WebSocket('ws://192.168.100.6:8000/ws');
+const ws = new WebSocket('wss://chatinterno.onrender.com/ws');
 
 let typingTimeout;
 let isTyping = false;
@@ -10,7 +10,7 @@ async function loadHistory() {
     const chat = document.getElementById('chat');
     chat.innerHTML = '';
     try {
-        const response = await fetch('http://192.168.100.6:8000/history');
+        const response = await fetch('https://chatinterno.onrender.com/history');
         const history = await response.json();
         history.forEach(msg => {
             chat.innerHTML += `<div>${msg}</div>`;
