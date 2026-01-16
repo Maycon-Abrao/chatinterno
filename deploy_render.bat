@@ -14,3 +14,4 @@ echo Se o Render estiver conectado ao GitHub, o deploy será iniciado automatica
 echo.
 echo Pronto!
 pause
+
