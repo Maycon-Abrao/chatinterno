@@ -1,4 +1,18 @@
-const ws = new WebSocket('wss://chatinterno.onrender.com/ws');
+const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+const ws = new WebSocket(`${protocol}://${location.host}/ws`);
+
+ws.onopen = () => {
+    console.log('✅ WebSocket conectado');
+};
+
+ws.onerror = (err) => {
+    console.error('❌ Erro no WebSocket', err);
+};
+
+ws.onclose = () => {
+    console.warn('⚠️ WebSocket desconectado');
+};
+
 
 let typingTimeout;
 let isTyping = false;
