@@ -7,48 +7,64 @@ let isTyping = false;
 async function loadHistory() {
     const chat = document.getElementById('chat');
     chat.innerHTML = '';
+
     try {
-        // Detecta se está rodando local ou em produção
         const baseUrl = window.location.hostname === 'localhost'
             ? '/history'
             : 'https://chatinterno.onrender.com/history';
+
         const response = await fetch(baseUrl);
         const history = await response.json();
+
         history.forEach(msg => {
-            chat.innerHTML += `<div>${msg}</div>`;
+            chat.innerHTML += `
+                <div class="msg">
+                    <strong>${msg.user ?? 'Usuário'}:</strong> ${msg.message ?? msg}
+                </div>
+            `;
         });
+
         chat.scrollTop = chat.scrollHeight;
     } catch (e) {
         chat.innerHTML = '<div style="color:#f00">Erro ao carregar histórico</div>';
+        console.error(e);
     }
 }
 
-// Solicitar permissão de notificação ao carregar a página
-window.addEventListener('DOMContentLoaded', () => {
-    if ('Notification' in window && Notification.permission !== 'granted') {
-        Notification.requestPermission();
-    }
-    loadHistory();
-});
-
+// Mensagens recebidas via WebSocket (PADRONIZADO)
 ws.onmessage = function(event) {
     const chat = document.getElementById('chat');
-    // Remove "digitando..." se existir
+
     const typingDiv = document.querySelector('.typing');
     if (typingDiv) typingDiv.remove();
-    chat.innerHTML += `<div>${event.data}</div>`;
+
+    let data;
+    try {
+        data = JSON.parse(event.data);
+    } catch {
+        data = { user: 'Usuário', message: event.data };
+    }
+
+    chat.innerHTML += `
+        <div class="msg">
+            <strong>${data.user}:</strong> ${data.message}
+        </div>
+    `;
+
     chat.scrollTop = chat.scrollHeight;
 
-    // Notificação do navegador
     if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
-        new Notification('Nova mensagem no chat', { body: event.data });
+        new Notification('Nova mensagem no chat', { body: data.message });
     }
 };
 
 function sendMessage() {
     const input = document.getElementById('messageInput');
-    if (input.value.trim() !== '') {
-        ws.send(input.value);
+    if (input.value.trim()) {
+        ws.send(JSON.stringify({
+            user: 'Você',
+            message: input.value
+        }));
         input.value = '';
         removeTyping();
     }
@@ -74,12 +90,23 @@ function removeTyping() {
     isTyping = false;
 }
 
-const inputEl = document.getElementById('messageInput');
-inputEl.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') {
-        sendMessage();
-    } else {
-        showTyping();
+// DOM totalmente carregado
+window.addEventListener('DOMContentLoaded', () => {
+    const inputEl = document.getElementById('messageInput');
+
+    inputEl.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+            sendMessage();
+        } else {
+            showTyping();
+        }
+    });
+
+    inputEl.addEventListener('input', showTyping);
+
+    if ('Notification' in window && Notification.permission !== 'granted') {
+        Notification.requestPermission();
     }
+
+    loadHistory();
 });
-inputEl.addEventListener('input', showTyping);
