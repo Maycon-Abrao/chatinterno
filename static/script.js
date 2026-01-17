@@ -1,100 +1,126 @@
+/* ===============================
+   IDENTIDADE DO CLIENTE
+================================ */
+
+// ID único por navegador (NUNCA muda)
+const clientId = localStorage.getItem('clientId') || crypto.randomUUID();
+localStorage.setItem('clientId', clientId);
+
+// Nome exibido no chat
 const username = localStorage.getItem('username')
     || `Usuário-${Math.floor(Math.random() * 10000)}`;
-
 localStorage.setItem('username', username);
+
+/* ===============================
+   WEBSOCKET
+================================ */
 
 const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
 const ws = new WebSocket(`${protocol}://${location.host}/ws`);
 
-ws.onopen = () => {
-    console.log('✅ WebSocket conectado');
-};
+ws.onopen = () => console.log('✅ WebSocket conectado');
+ws.onerror = err => console.error('❌ Erro WebSocket', err);
+ws.onclose = () => console.warn('⚠️ WebSocket desconectado');
 
-ws.onerror = (err) => {
-    console.error('❌ Erro no WebSocket', err);
-};
+/* ===============================
+   NOTIFICAÇÕES
+================================ */
 
-ws.onclose = () => {
-    console.warn('⚠️ WebSocket desconectado');
-};
+function requestNotificationPermission() {
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+}
 
+/* ===============================
+   HISTÓRICO
+================================ */
 
-let typingTimeout;
-let isTyping = false;
-
-// Função para carregar histórico do servidor
 async function loadHistory() {
     const chat = document.getElementById('chat');
     chat.innerHTML = '';
 
     try {
-        const baseUrl = window.location.hostname === 'localhost'
-            ? '/history'
-            : 'https://chatinterno.onrender.com/history';
-
-        const response = await fetch(baseUrl);
+        const response = await fetch('/history');
         const history = await response.json();
 
         history.forEach(msg => {
-            const isMe = msg.user === username;
+            const isMe = msg.clientId === clientId;
 
             chat.innerHTML += `
-        <div class="msg ${isMe ? 'me' : 'other'}">
-            <strong>${isMe ? 'Você' : msg.user}:</strong> ${msg.message}
-        </div>
-    `;
+                <div class="msg ${isMe ? 'me' : 'other'}">
+                    <strong>${isMe ? 'Você' : msg.user}:</strong>
+                    ${msg.message}
+                </div>
+            `;
         });
-
 
         chat.scrollTop = chat.scrollHeight;
     } catch (e) {
-        chat.innerHTML = '<div style="color:#f00">Erro ao carregar histórico</div>';
+        chat.innerHTML = '<div style="color:red">Erro ao carregar histórico</div>';
         console.error(e);
     }
 }
 
-// Mensagens recebidas via WebSocket (PADRONIZADO)
-ws.onmessage = function (event) {
+/* ===============================
+   RECEBER MENSAGEM
+================================ */
+
+ws.onmessage = event => {
     const chat = document.getElementById('chat');
 
-    const typingDiv = document.querySelector('.typing');
-    if (typingDiv) typingDiv.remove();
+    document.querySelector('.typing')?.remove();
 
-    let data;
-    try {
-        data = JSON.parse(event.data);
-    } catch {
-        data = { user: 'Usuário', message: event.data };
-    }
+    const data = JSON.parse(event.data);
+    const isMe = data.clientId === clientId;
 
-    const isMe = data.user === username;
-
-    // ID do navegador do usuário
     chat.innerHTML += `
-    <div class="msg ${isMe ? 'me' : 'other'}">
-        <strong>${isMe ? 'Você' : data.user}:</strong> ${data.message}
-    </div>
-`;
-
+        <div class="msg ${isMe ? 'me' : 'other'}">
+            <strong>${isMe ? 'Você' : data.user}:</strong>
+            ${data.message}
+        </div>
+    `;
 
     chat.scrollTop = chat.scrollHeight;
 
-    if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
-        new Notification('Nova mensagem no chat', { body: data.message });
+    // 🔔 NOTIFICAÇÃO (somente mensagens de OUTROS usuários)
+    if (
+        !isMe &&
+        document.hidden &&
+        'Notification' in window &&
+        Notification.permission === 'granted'
+    ) {
+        new Notification('Nova mensagem no Chat Interno', {
+            body: `${data.user}: ${data.message}`,
+            icon: '/static/sobre.png'
+        });
     }
 };
 
+/* ===============================
+   ENVIAR MENSAGEM
+================================ */
+
 function sendMessage() {
     const input = document.getElementById('messageInput');
-    if (input.value.trim()) {
-        ws.send(JSON.stringify({
-            user: username,
-            message: input.value
-        }));
-        input.value = '';
-        removeTyping();
-    }
+    if (!input.value.trim()) return;
+
+    ws.send(JSON.stringify({
+        clientId,
+        user: username,
+        message: input.value
+    }));
+
+    input.value = '';
+    removeTyping();
 }
+
+/* ===============================
+   DIGITANDO...
+================================ */
+
+let typingTimeout;
+let isTyping = false;
 
 function showTyping() {
     if (!isTyping) {
@@ -106,21 +132,27 @@ function showTyping() {
         chat.scrollTop = chat.scrollHeight;
         isTyping = true;
     }
+
     clearTimeout(typingTimeout);
     typingTimeout = setTimeout(removeTyping, 1500);
 }
 
 function removeTyping() {
-    const typingDiv = document.querySelector('.typing');
-    if (typingDiv) typingDiv.remove();
+    document.querySelector('.typing')?.remove();
     isTyping = false;
 }
 
-// DOM totalmente carregado
-window.addEventListener('DOMContentLoaded', () => {
-    const inputEl = document.getElementById('messageInput');
+/* ===============================
+   INIT
+================================ */
 
-    inputEl.addEventListener('keydown', e => {
+window.addEventListener('DOMContentLoaded', () => {
+    const input = document.getElementById('messageInput');
+
+    // Permissão de notificação APÓS interação
+    input.addEventListener('focus', requestNotificationPermission);
+
+    input.addEventListener('keydown', e => {
         if (e.key === 'Enter') {
             sendMessage();
         } else {
@@ -128,11 +160,7 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    inputEl.addEventListener('input', showTyping);
-
-    if ('Notification' in window && Notification.permission !== 'granted') {
-        Notification.requestPermission();
-    }
+    input.addEventListener('input', showTyping);
 
     loadHistory();
 });
