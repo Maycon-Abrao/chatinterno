@@ -1,3 +1,8 @@
+const username = localStorage.getItem('username')
+    || `Usuário-${Math.floor(Math.random() * 10000)}`;
+
+localStorage.setItem('username', username);
+
 const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
 const ws = new WebSocket(`${protocol}://${location.host}/ws`);
 
@@ -31,12 +36,15 @@ async function loadHistory() {
         const history = await response.json();
 
         history.forEach(msg => {
+            const isMe = msg.user === username;
+
             chat.innerHTML += `
-                <div class="msg">
-                    <strong>${msg.user ?? 'Usuário'}:</strong> ${msg.message ?? msg}
-                </div>
-            `;
+        <div class="msg ${isMe ? 'me' : 'other'}">
+            <strong>${isMe ? 'Você' : msg.user}:</strong> ${msg.message}
+        </div>
+    `;
         });
+
 
         chat.scrollTop = chat.scrollHeight;
     } catch (e) {
@@ -46,7 +54,7 @@ async function loadHistory() {
 }
 
 // Mensagens recebidas via WebSocket (PADRONIZADO)
-ws.onmessage = function(event) {
+ws.onmessage = function (event) {
     const chat = document.getElementById('chat');
 
     const typingDiv = document.querySelector('.typing');
@@ -59,11 +67,15 @@ ws.onmessage = function(event) {
         data = { user: 'Usuário', message: event.data };
     }
 
+    const isMe = data.user === username;
+
+    // ID do navegador do usuário
     chat.innerHTML += `
-        <div class="msg">
-            <strong>${data.user}:</strong> ${data.message}
-        </div>
-    `;
+    <div class="msg ${isMe ? 'me' : 'other'}">
+        <strong>${isMe ? 'Você' : data.user}:</strong> ${data.message}
+    </div>
+`;
+
 
     chat.scrollTop = chat.scrollHeight;
 
@@ -76,7 +88,7 @@ function sendMessage() {
     const input = document.getElementById('messageInput');
     if (input.value.trim()) {
         ws.send(JSON.stringify({
-            user: 'Você',
+            user: username,
             message: input.value
         }));
         input.value = '';

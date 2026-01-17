@@ -217,4 +217,12 @@ body {
         border-radius: 0;
     }
 }
+/* Marcador de menssgens */
+.msg.me {
+    color: #60a5fa;
+}
+
+.msg.other {
+    color: #e5e7eb;
+}
 
